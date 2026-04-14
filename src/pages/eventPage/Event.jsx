@@ -67,10 +67,17 @@ export default function Event() {
                 <div className="event__mainInfo">
                     <div className="event__date">
                         <p className="event__day">
-                            <img src={date} alt="calendar icon" />
-                            <time dateTime={event.start_date}>
-                                {event.start_date.split('-').reverse().join('.')}
-                            </time>
+                            <div className="event__dates">
+                                        <img src={date} alt="date icon" />
+                                        <time dateTime={event.start_date}>
+                                            {event.start_date.split('-').reverse().join('.')}
+                                        </time>
+                                        {event.end_date !== event.start_date &&(
+                                            <time dateTime={event.end_date}>
+                                                {event.end_date.split('-').reverse().join('.')}
+                                            </time>
+                                        )}
+                                    </div>
                         </p>
                         <p className="event__time">
                             <img src={time} alt="date icon" />
@@ -78,16 +85,35 @@ export default function Event() {
                                 
                                 {event.start_time}
                             </time>
+                            {event.end_time && (
+                                <>
+                                    <span>-</span>
+                                    <time dateTime={event.end_time}>{event.end_time}</time>
+                                </>
+                            )}
                         </p>
                     </div>
                     <div className="event__price">
                         <img src={currency} alt="price icon" />
-                        {typeof event.price === 'number' ? `${event.price}` : event.price}
+                        {event.price === 0 ? "Бесплатно" : event.price}
                     </div>
-                    <div className="event__city">
+                    <div className="event__location">
                         <img src={place} alt="price icon" />
-                        {event.city?.join(', ')}
+                        <span className="location__text">
+                            <span className="event__city">
+                            
+                            {event.city?.join(', ')}
+                        </span>
+                        {event.address && (
+                            <span className="event__address">
+                                , {event.address}
+                            </span>
+                        )}
+                        </span>
+                        
+                        
                     </div>
+                    
                     <div className="event__tags">
                         {event.tags.map((tag, index) => (
                             <span key={index} className="event__tag">#{tag}</span>
@@ -112,22 +138,59 @@ export default function Event() {
                         >
                             Спикеры
                         </button>
+
+                        <button
+                            className={`tab-btn ${activeTab === 'organizers' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('organizers')}
+                        >
+                            Организаторы
+                        </button>
                         
                     </div>
 
                     <div className="tab__content">
                         {activeTab === 'description' && (
                             <div className="event__description-tab">
-                                    {/* <div className="event__tags">
-                                        {event.tags.map((tag,index) => <span key={index}>#{tag}</span>)}
-                                    </div> */}
+                                    
+                                    
                                     <p className="description-text">{event.description}</p>
                             </div>
                         )}
                         {
                             activeTab === 'speakers' && (
                                 <div className="event__speakers-tab">
-                                    {event.speakers.map((speaker,index) => <p key={index}>{speaker}</p>)}
+                                    {event.speakers.map((speaker,index) => 
+                                         
+                                        <div key={index}>
+                                            <span className="speaker__name">{speaker.split('-')[0]}</span>
+                                            <span>-</span>
+                                            <span className="speaker__desc">{speaker.split('-').slice(1)}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            )
+                        }
+                        {
+                            activeTab === 'organizers' && (
+                                <div className="event__organizers">
+                                    <div className="organizers-list">
+                                        {event.organizers.map((org, index) => {
+                                            return org.url ? (
+                                                <a 
+                                                    key={index}
+                                                    href={org.url}
+                                                    className="organizer-chip"
+                                                    onClick={(e) => handleOpenLink(e, org.url)}
+                                                >
+                                                    {org.name}
+                                                </a>
+                                            ) : (
+                                                <span key={index} className="organizer-chip organizer-chip--no-link">
+                                                    {org.name}
+                                                </span>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
                             )
                         }
