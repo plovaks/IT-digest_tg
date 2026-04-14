@@ -10,7 +10,7 @@ import '@telegram-apps/telegram-ui/dist/styles.css';
 createRoot(document.getElementById('root')).render(
   <BrowserRouter basename="/IT-digest_tg">
     <StrictMode>
-      <AppRoot>
+      <AppRoot appearance="light" platform="base">
         <App />
       </AppRoot>
     </StrictMode>

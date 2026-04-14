@@ -81,7 +81,7 @@
     border-radius: 6px;
     font-size: 11px;
     font-weight: 500;
-    background-color: #f0f2f8; /
+    background-color: #f0f2f8; 
 }
 
 .digest__tag:nth-child(3n+1){ background-color: #ADFFC6; }
