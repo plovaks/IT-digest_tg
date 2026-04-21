@@ -1,5 +1,5 @@
 export const generateDates = (count = 30) => {
-  const days = []; // <--- ВОТ ЭТА СТРОЧКА ДОЛЖНА БЫТЬ ОБЯЗАТЕЛЬНО
+  const days = []; 
   const date = new Date();
 
   for (let i = 0; i < count; i++) {
@@ -14,5 +14,5 @@ export const generateDates = (count = 30) => {
     });
   }
   
-  return days; // Проверьте, что вы возвращаете массив в конце
+  return days; 
 };

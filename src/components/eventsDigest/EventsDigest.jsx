@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useCallback} from "react";
 import { Button, Placeholder } from '@telegram-apps/telegram-ui';
 import eventsData from "../../data/mock_events.json";
 import './EventsDigest.css';
@@ -14,77 +14,174 @@ export default function EventsDigest({ filters, setFilters }) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [token, setToken] = useState(null);
+  const [userId, setUserId] = useState(null);
 
   const activeCount = Object.values(filters).flat().length;
-  const isFilterApplied = activeCount > 0;
+  const hasFilters = activeCount > 0;
+
+  const shouldShowDrawer = !isCheckingAuth && !hasFilters;
+
+ 
 
 
 
-  useEffect(()=>{
+  const filteredEvents = useMemo(() => {
+    if (!hasFilters) return [];
+    
+    return eventsData.filter(event => {
+        
+        if (filters.cities.length > 0 && !event.city?.some(c => filters.cities.includes(c))) return false;
+        
+        
+        if (filters.categories.length > 0 && !event.track?.some(t => filters.categories.includes(t))) return false;
+        
+       
+        if (filters.eventTypes.length > 0 && !event.event_type?.some(t => filters.eventTypes.includes(t))) return false;
+        
+       
+        if (filters.participationTypes.length > 0) {
+            const eventParticipationTypes = event.participation_type?.split(',').map(p => p.trim()) || [];
+            const hasMatch = eventParticipationTypes.some(p => filters.participationTypes.includes(p));
+            if (!hasMatch) return false;
+        }
+        
+        return true;
+    });
+}, [filters, hasFilters]);
+
+  const saveFiltersToServer = useCallback(async (newFilters, authToken, uid) => {
+    if (!authToken || !uid) return false;
+
+    try {
+      const payload = {
+        city: newFilters.cities.join(','),
+        track: newFilters.categories.join(','),
+        preferred_event_types: newFilters.eventTypes.join(','),
+        preferred_participation_types: newFilters.participationTypes.join(',')
+      };
+
+      const response = await fetch(`https://ritmevents.ru/api/v1/users/${uid}/filters`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (response.ok){
+        console.log('filters saved')
+        return true;
+      }
+      
+    } catch (error) {
+      console.log('error while saving filters: ', error);
+      return false;
+    }
+  
+  }, []);
+
+  const handleFilterChange = useCallback(async (newFilters) => {
+    setFilters(newFilters);
+    if (token && uid ){
+      saveFiltersToServer(newFilters, token, userId);
+    }
+  }, [token, userId, setFilters, saveFiltersToServer])
+
+  const resetFilters = useCallback(async () => {
+    const emptyFilters = {
+      cities: [],
+      categories: [],
+      eventTypes: [],
+      participationTypes: []
+    };
+    setFilters(emptyFilters);
+    if (token && userId) {
+      await saveFiltersToServer(emptyFilters, token, userId);
+    }
+  }, [token, userId, setFilters, saveFiltersToServer]);
+   
+  useEffect(() => {
     const handleAuth = async () => {
       const tg = window.Telegram?.WebApp;
       const initData = tg?.initData;
       const telegramId = tg?.initDataUnsafe?.user?.id;
 
       try {
-        const response = await fetch('https://sunyodrive.ru', {
-          method: 'POST',
-          headers:{
-            'Content-Type':  'application/json',
-          },
-          body: JSON.stringify({init_data:initData}),
+        // авторизация пользователя по апи
+        const response = await fetch('https://ritmevents.ru/api/v1/auth/telegram', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ init_data: initData }),
         });
-        if(response.ok){
+        if (response.ok) {
           const data = await response.json();
           localStorage.setItem('access_token', data.access_token);
           localStorage.setItem('refresh_token', data.refresh_token);
-
+          
+          setToken(data.access_token);
           setIsLoggedIn(true);
+
           if (telegramId) {
-            const userRes = await fetch(`https://sunyodrive.ru{telegramId}`, {
-              headers: { 'Authorization': `Bearer ${data.access_token}` }
-            });
+            const userRes = await fetch('https://ritmevents.ru/api/v1/users/me', {
+   
+            headers: { 
+                'Authorization': `Bearer ${data.access_token}`,
+                'Content-Type': 'application/json'  
+            }
+        });
 
             if (userRes.ok) {
               const userData = await userRes.json();
-               setFilters({
-                cities: userData.city ? [userData.city] : [],
-                categories: userData.track ? [userData.track] : [],
-                eventTypes: userData.preferred_event_types ? [userData.preferred_event_types] : [],
-                participationTypes: userData.preferred_participation_types ? [userData.preferred_participation_types] : []
-              });
-              
-              setIsDrawerOpen(false);
+              setUserId(userData.id);
+               console.log(' Данные пользователя с сервера:', userData);
+              const newFilters = {
+    
+                  cities: userData.city ? userData.city.split(',').map(c => c.trim()) : [],
+                  
+                  categories: userData.track ? userData.track.split(',').map(t => t.trim()) : [],
+                  
+                  eventTypes: userData.preferred_event_types 
+                      ? userData.preferred_event_types.split(',').map(e => e.trim()) 
+                      : [],
+                  
+                  participationTypes: userData.preferred_participation_types 
+                      ? userData.preferred_participation_types.split(',').map(p => p.trim()) 
+                      : []
+              };
+              console.log(' Установлены фильтры:', newFilters);
+              setFilters(newFilters);
+              const hasUserFilters = Object.values(newFilters).flat().length > 0;
+               console.log(' Есть фильтры у пользователя?', hasUserFilters);
+              setIsDrawerOpen(!hasUserFilters);
+            } else {
+              setIsDrawerOpen(true);
             }
-        }}
-        else{
+          }
+        } else {
           setIsLoggedIn(false);
           setIsDrawerOpen(true);
         }
-
       } catch (error) {
         console.log('ошибка: ', error);
+        setIsLoggedIn(false);
         setIsDrawerOpen(true);
-       
-      }finally{
+      } finally {
         setIsCheckingAuth(false);
       }
-    }
-    handleAuth();
-  },[]);
-
-
-  const filteredEvents = useMemo(() => {
-    if (!isLoggedIn && !isFilterApplied) return [];
+    };
     
-    return eventsData.filter(event => {
-      if (filters.cities.length > 0 && !event.city?.some(c => filters.cities.includes(c))) return false;
-      if (filters.categories.length > 0 && !filters.categories.includes(event.category)) return false;
-      if (filters.eventTypes.length > 0 && !event.event_type?.some(t => filters.eventTypes.includes(t))) return false;
-      if (filters.participationTypes.length > 0 && !filters.participationTypes.includes(event.participation_type)) return false;
-      return true;
-    });
-  }, [filters, isFilterApplied, isLoggedIn]);
+    handleAuth();
+  }, [setFilters]);
+
+    useEffect(() => {
+    if (!isCheckingAuth && !hasFilters) {
+      setIsDrawerOpen(true);
+    }
+  }, [isCheckingAuth, hasFilters]);
 
   useEffect(() => {
     if (window.Telegram?.WebApp) {
@@ -92,6 +189,8 @@ export default function EventsDigest({ filters, setFilters }) {
       window.Telegram.WebApp.expand();
     }
   }, []);
+
+ 
 
   return (
     <div className="events">
@@ -103,23 +202,24 @@ export default function EventsDigest({ filters, setFilters }) {
           onClick={() => setIsDrawerOpen(true)} 
           className="filters-open-btn"
         >
-          Фильтры {activeCount > 0 && `(${activeCount})`}
+          Фильтры {hasFilters && `(${activeCount})`}
         </Button>
       </div>
 
       <Filters 
         filters={filters} 
-        onFilterChange={setFilters} 
+        onFilterChange={handleFilterChange} 
         isOpen={isDrawerOpen} 
         setIsOpen={setIsDrawerOpen} 
+        onReset={resetFilters}
       />
 
       <div className="digest-list">
-        {!isLoggedIn && !isFilterApplied ? (
+        {!hasFilters ? (
           <Placeholder 
             className="placeholder"
-            header="Выберите параметры" 
-            description="Чтобы увидеть мероприятия, выберите интересующие вас категории"
+            header="Выберите фильтры" 
+            description="Нажмите на кнопку «Фильтры» и выберите интересующие вас параметры, чтобы увидеть мероприятия"
           />
         ) : filteredEvents.length > 0 ? (
           filteredEvents.map(event => (
@@ -155,7 +255,11 @@ export default function EventsDigest({ filters, setFilters }) {
             </div>
           ))
         ) : (
-          <p className="no-results">Мероприятий не найдено</p>
+          <Placeholder
+            className="placeholder"
+            header="Ничего не найдено"
+            description="Попробуйте изменить параметры фильтрации"
+          />
         )}
       </div>
     </div>

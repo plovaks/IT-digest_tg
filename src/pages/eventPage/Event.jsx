@@ -36,6 +36,17 @@ export default function Event() {
   //   }
   // }, []);
 
+  const parseSpeakerName = (speaker) => {
+    const fullName = speaker.name || '';
+    const hasDash = fullName.includes('-');
+    
+    if (hasDash) {
+      const [name, description] = fullName.split('-');
+      return { name: name.trim(), description: description.trim() };
+    }
+    
+    return { name: fullName, description: null };
+  };
   const handleOpenLink = (e, url) => {
     if (e) e.preventDefault();
     const tg = window.Telegram?.WebApp;
@@ -148,17 +159,20 @@ export default function Event() {
             )}
             {activeTab === 'speakers' && (
               <div className="event__speakers-tab">
-                {event.speakers.map((speaker, index) => (
-                  <div key={index}>
-                    <span className="speaker__name">{speaker.split('-')[0]}</span>
-                    {speaker.includes('-') && (
-                      <>
-                        <span> - </span>
-                        <span className="speaker__desc">{speaker.split('-').slice(1).join('-')}</span>
-                      </>
-                    )}
-                  </div>
-                ))}
+                {event.speakers.map((speaker, index) => {
+                  const { name, description } = parseSpeakerName(speaker);
+                  return (
+                    <div key={index}>
+                      <span className="speaker__name">{name}</span>
+                      {description && (
+                        <>
+                          <span> - </span>
+                          <span className="speaker__desc">{description}</span>
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
             {activeTab === 'organizers' && (

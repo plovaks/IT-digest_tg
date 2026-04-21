@@ -3,7 +3,7 @@
     flex-direction: column;
     padding: 15px;
     border-radius: 12px;
-    background-color: var(--tg-theme-secondary-bg-color, #ffffff);
+    background-color: #ffffff;
     border: 1px solid #4F77F1;
     margin-bottom: 12px;
     transition: box-shadow 0.2s ease; 

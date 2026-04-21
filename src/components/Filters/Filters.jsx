@@ -3,7 +3,7 @@ import { CITIES, CATEGORIES, EVENT_TYPES, PARTICIPATION_TYPES } from "../../data
 import closeIcon from "../../assets/icons/close.svg"
 import { useEffect } from "react"
 
-export default function Filters({ filters, onFilterChange, isOpen, setIsOpen }) {
+export default function Filters({ filters, onFilterChange, isOpen, setIsOpen , onReset}) {
 
   useEffect(() => {
     if (isOpen) {
@@ -29,6 +29,7 @@ export default function Filters({ filters, onFilterChange, isOpen, setIsOpen }) 
       eventTypes: [],
       participationTypes: []
     });
+    if (onReset) onReset();
   };
 
   if (!isOpen) return null;

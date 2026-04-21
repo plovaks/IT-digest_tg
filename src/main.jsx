@@ -11,12 +11,13 @@ const tg = window.Telegram?.WebApp;
 if (tg) {
   tg.ready();      
   tg.expand();     
+  
 }
 
 createRoot(document.getElementById('root')).render(
   <BrowserRouter basename="/IT-digest_tg">
     <StrictMode>
-      <AppRoot appearance="light" platform="base">
+      <AppRoot  platform="base">
         <App />
       </AppRoot>
     </StrictMode>

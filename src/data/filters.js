@@ -3,8 +3,10 @@ export const CITIES = [
     "Санкт-Петербург",
     "Калининград",
     "Нижний Новгород",
+    "Екатеринбург",
+    "Сочи",
     "Онлайн",
-    "Другое",
+    
 ];
 
 export const CATEGORIES = [
@@ -24,7 +26,6 @@ export const CATEGORIES = [
     "Наука",
     "Маркетинг",
     "Дизайн",
-    "Другое",
 ];
 
 export const EVENT_TYPES = [
@@ -43,7 +44,6 @@ export const EVENT_TYPES = [
     "Награждение",
     "Демо-день",
     "День открытых дверей",
-    "Другое",
 ];
 
 export const PARTICIPATION_TYPES = [
