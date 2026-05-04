@@ -24,6 +24,38 @@ export default function Filters({ filters, onFilterChange, isOpen, setIsOpen, on
     setTempFilters({ ...tempFilters, [sectionKey]: newValues });
   };
 
+  const selectAllCategories = () => {
+    setTempFilters({ ...tempFilters, categories: [...CATEGORIES] });
+  };
+
+  const clearAllCategories = () => {
+    setTempFilters({ ...tempFilters, categories: [] });
+  };
+
+  const selectAllCities = () => {
+    setTempFilters({ ...tempFilters, cities: [...CITIES] });
+  };
+
+  const clearAllCities = () => {
+    setTempFilters({ ...tempFilters, cities: [] });
+  };
+
+  const selectAllEventTypes = () => {
+    setTempFilters({ ...tempFilters, eventTypes: [...EVENT_TYPES] });
+  };
+
+  const clearAllEventTypes = () => {
+    setTempFilters({ ...tempFilters, eventTypes: [] });
+  };
+
+  const selectAllParticipationTypes = () => {
+    setTempFilters({ ...tempFilters, participationTypes: [...PARTICIPATION_TYPES] });
+  };
+
+  const clearAllParticipationTypes = () => {
+    setTempFilters({ ...tempFilters, participationTypes: [] });
+  };
+
   const applyFilters = () => {
     onFilterChange(tempFilters);
     setIsOpen(false);
@@ -42,6 +74,11 @@ export default function Filters({ filters, onFilterChange, isOpen, setIsOpen, on
 
   if (!isOpen) return null;
 
+  const isAllCategoriesSelected = tempFilters.categories.length === CATEGORIES.length;
+  const isAllCitiesSelected = tempFilters.cities.length === CITIES.length;
+  const isAllEventTypesSelected = tempFilters.eventTypes.length === EVENT_TYPES.length;
+  const isAllParticipationTypesSelected = tempFilters.participationTypes.length === PARTICIPATION_TYPES.length;
+
   return (
     <div className="filters-drawer-overlay" onClick={applyFilters}>  
       <div className="filters-drawer" onClick={(e) => e.stopPropagation()}>
@@ -53,7 +90,15 @@ export default function Filters({ filters, onFilterChange, isOpen, setIsOpen, on
         </div>
 
         <div className="filter-section">
-          <h3 className="filter-section__title">Категории</h3>
+          <div className="filter-section-header">
+            <h3 className="filter-section__title">Категории</h3>
+            <button
+              className='filter-section--chooseAll'
+              onClick={isAllCategoriesSelected ? clearAllCategories : selectAllCategories}
+            >
+              {isAllCategoriesSelected ? 'Очистить все' : 'Выбрать все'}
+            </button>
+          </div>
           <div className="chips-container">
             {CATEGORIES.map((category, index) => (
               <button 
@@ -68,23 +113,38 @@ export default function Filters({ filters, onFilterChange, isOpen, setIsOpen, on
         </div>
 
         <div className="filter-section">
-          <h3 className="filter-section__title">Город</h3>
-          <div className="cities-list">
+          <div className="filter-section-header">
+            <h3 className="filter-section__title">Город</h3>
+            <button
+              className='filter-section--chooseAll'
+              onClick={isAllCitiesSelected ? clearAllCities : selectAllCities}
+            >
+              {isAllCitiesSelected ? 'Очистить все' : 'Выбрать все'}
+            </button>
+          </div>
+          <div className="chips-container">
             {CITIES.map((city, index) => (
-              <label key={index} className='checkbox-item'>
-                <input 
-                  type="checkbox" 
-                  checked={tempFilters.cities.includes(city)}  
-                  onChange={() => handleFilterChange('cities', city)} 
-                />
-                <span>{city}</span>
-              </label>
+              <button 
+                key={index} 
+                className={`chip ${tempFilters.cities.includes(city) ? 'chip-active' : ''}`}  
+                onClick={() => handleFilterChange('cities', city)}
+              >
+                {city}
+              </button>
             ))}
           </div>
         </div>
 
         <div className="filter-section">
-          <h3 className="filter-section__title">Тип мероприятия</h3>
+          <div className="filter-section-header">
+            <h3 className="filter-section__title">Тип мероприятия</h3>
+            <button
+              className='filter-section--chooseAll'
+              onClick={isAllEventTypesSelected ? clearAllEventTypes : selectAllEventTypes}
+            >
+              {isAllEventTypesSelected ? 'Очистить все' : 'Выбрать все'}
+            </button>
+          </div>
           <div className="chips-container">
             {EVENT_TYPES.map((type, index) => (
               <button 
@@ -99,17 +159,24 @@ export default function Filters({ filters, onFilterChange, isOpen, setIsOpen, on
         </div>
 
         <div className="filter-section">
-          <h3 className='filter-section__title'>Тип участия</h3>
-          <div className='participateType-list'>
+          <div className="filter-section-header">
+            <h3 className='filter-section__title'>Тип участия</h3>
+            <button
+              className='filter-section--chooseAll'
+              onClick={isAllParticipationTypesSelected ? clearAllParticipationTypes : selectAllParticipationTypes}
+            >
+              {isAllParticipationTypesSelected ? 'Очистить все' : 'Выбрать все'}
+            </button>
+          </div>
+          <div className='chips-container'>
             {PARTICIPATION_TYPES.map((partType, index) => (
-              <label key={index} className='checkbox-item'>
-                <input 
-                  type="checkbox" 
-                  checked={tempFilters.participationTypes.includes(partType)}  
-                  onChange={() => handleFilterChange('participationTypes', partType)} 
-                />
-                <span>{partType}</span>
-              </label>
+              <button 
+                key={index} 
+                className={`chip ${tempFilters.participationTypes.includes(partType) ? 'chip-active' : ''}`}  
+                onClick={() => handleFilterChange('participationTypes', partType)}
+              >
+                {partType}
+              </button>
             ))}
           </div>
         </div>

@@ -92,6 +92,14 @@ button{
   font-weight: 600;
 }
 
+.filter-section--chooseAll{
+  background-color: #0882ff;
+  color:white;
+  padding: 5px 10px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+
 .chips-container {
   display: flex;
   gap: 8px;
@@ -117,45 +125,11 @@ button{
 
 .cities-list, .participateType-list {
   display: flex;
-  flex-direction: column;
+  /* flex-direction: column; */
   gap: 10px;
 }
 
-.checkbox-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  cursor: pointer;
-  font-size: 15px;
-}
 
-.checkbox-item input[type="checkbox"] {
-  appearance: none;
-  -webkit-appearance: none;
-  width: 20px;
-  height: 20px;
-  border: 2px solid #ccc;
-  border-radius: 6px;
-  background-color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  position: relative;
-}
-
-.checkbox-item input[type="checkbox"]:checked {
-  background-color: #1032A1;
-  border-color: #1032A1;
-}
-
-.checkbox-item input[type="checkbox"]:checked::after {
-  content: '✓';
-  color: white;
-  font-size: 14px;
-  font-weight: bold;
-}
 
 .filter-actions {
   display: flex;

@@ -1,55 +1,91 @@
-import { useParams } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
-import eventsData from "../../data/mock_events.json";
 import currency from "../../assets/icons/currency.svg";
 import date from "../../assets/icons/DateRange.svg";
 import place from "../../assets/icons/Place.svg";
 import time from "../../assets/icons/time.svg";
 import './Event.css';
 
-export default function Event() {
-  const { id } = useParams();
+export default function Event({ embeddedId }) {
+  const location = useLocation();
+  const { id: paramId } = useParams();
+  const id = embeddedId || paramId;
+  
+  
+const token = location.state?.token || localStorage.getItem('access_token');
+const userId = location.state?.userId || localStorage.getItem('user_id');
+  
   const [event, setEvent] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('description');
   const [addToCalendar, setAddToCalendar] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [token, setToken] = useState(null);
-  const [userId, setUserId] = useState(null);
 
+
+  // функиця для форматирования строки времени
+  const formatTime = (timeStr) =>{
+    if(!timeStr) return '';
+    return timeStr.substring(0,5);
+  }
+  
   useEffect(() => {
-    const accessToken = localStorage.getItem('access_token');
-    if (accessToken) {
-      setToken(accessToken);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!token) return;
-
-    const fetchUser = async () => {
+    const fetchEvent = async () => {
+      if (!id) {
+        setError('ID события не указан');
+        setLoading(false);
+        return;
+      }
+      
+      setLoading(true);
+      setError(null);
+      
       try {
-        const response = await fetch('https://ritmevents.ru/api/v1/users/me', {
-          headers: { 'Authorization': `Bearer ${token}` }
+        const headers = {};
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        
+        const eventId = Number(id);
+        if (isNaN(eventId)) {
+          setError('Некорректный ID события');
+          setLoading(false);
+          return;
+        }
+        
+        const url = `https://ritmevents.ru/api/v1/events/${eventId}`;
+        console.log('Fetching event from:', url);
+        
+        const response = await fetch(url, { 
+          headers: headers,
+          method: 'GET'
         });
+        
+        console.log('Response status:', response.status);
+        
         if (response.ok) {
           const data = await response.json();
-          setUserId(data.id);
+          console.log('Event data loaded');
+          setEvent(data);
+        } else if (response.status === 403 || response.status === 401) {
+          setError('Необходима авторизация для просмотра события');
+        } else if (response.status === 404) {
+          setError(`Событие с ID ${eventId} не найдено`);
+        } else {
+          const errorText = await response.text();
+          console.error('API error:', errorText);
+          setError(`Ошибка ${response.status}: ${errorText}`);
         }
       } catch (error) {
-        console.error('Ошибка получения userId:', error);
+        console.error('Ошибка при запросе события:', error);
+        setError(`Ошибка соединения: ${error.message}`);
+      } finally {
+        setLoading(false);
       }
     };
-    fetchUser();
-  }, [token]);
-
-  useEffect(() => {
-    try {
-      const eve = eventsData.find(item => item.id === Number(id));
-      setEvent(eve);
-    } catch (error) {
-      console.error("Ошибка при поиске события:", error);
-    }
-  }, [id]);
+    
+    fetchEvent();
+  }, [id, token]);
 
   const openLink = (url) => {
     const tg = window.Telegram?.WebApp;
@@ -142,13 +178,13 @@ export default function Event() {
   const handleAddToCalendar = async (provider) => {
     if (!token) {
       const tg = window.Telegram?.WebApp;
-      
+      tg?.showAlert('Необходимо авторизоваться');
       return;
     }
 
     if (!userId) {
       const tg = window.Telegram?.WebApp;
-      
+      tg?.showAlert('Ошибка: не удалось определить пользователя');
       return;
     }
 
@@ -167,7 +203,6 @@ export default function Event() {
         openLink(oauthUrl);
         
         const tg = window.Telegram?.WebApp;
-        
         
         const connected = await waitForCalendarConnection(provider);
         
@@ -204,8 +239,33 @@ export default function Event() {
     openLink(url);
   };
 
+  if (loading) {
+    return (
+      <div className="event">
+        <div className="loading-container">
+          <div className="spinner"></div>
+          <p>Загрузка события...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="event">
+        <div className="event__not-found">
+          <p>{error}</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!event) {
-    return <div className="event__not-found">Событие не найдено</div>;
+    return (
+      <div className="event">
+        <div className="event__not-found">Событие не найдено</div>
+      </div>
+    );
   }
 
   return (
@@ -240,21 +300,21 @@ export default function Event() {
             {event.start_time && (
               <div className="event__time">
                 <img src={time} alt="time icon" />
-                <time dateTime={event.start_time}>{event.start_time}</time>
+                <time dateTime={event.start_time}>{formatTime(event.start_time)}</time>
                 {event.end_time && (
                   <>
                     <span> - </span>
-                    <time dateTime={event.end_time}>{event.end_time}</time>
+                    <time dateTime={event.end_time}>{formatTime(event.end_time)}</time>
                   </>
                 )}
               </div>
             )}
           </div>
 
-          {Number.isInteger(event.price) && (
+          {typeof event.price === 'number' && (
             <div className="event__price">
               <img src={currency} alt="price icon" />
-              {event.price === 0 ? "Бесплатно" : event.price}
+              {event.price === 0 ? "Бесплатно" : `${event.price}`}
             </div>
           )}
 
@@ -267,7 +327,7 @@ export default function Event() {
           </div>
 
           <div className="event__tags">
-            {event.tags.map((tag, index) => (
+            {event.tags?.map((tag, index) => (
               <span key={index} className="event__tag">#{tag}</span>
             ))}
           </div>
@@ -294,7 +354,7 @@ export default function Event() {
             )}
             {activeTab === 'speakers' && (
               <div className="event__speakers-tab">
-                {event.speakers.map((speaker, index) => {
+                {event.speakers?.map((speaker, index) => {
                   const { name, description } = parseSpeakerName(speaker);
                   return (
                     <div key={index}>
@@ -313,7 +373,7 @@ export default function Event() {
             {activeTab === 'organizers' && (
               <div className="event__organizers">
                 <div className="organizers-list">
-                  {event.organizers.map((org, index) => (
+                  {event.organizers?.map((org, index) => (
                     org.url ? (
                       <a key={index} href={org.url} className="organizer-chip" onClick={(e) => handleOpenLink(e, org.url)}>
                         {org.name}
@@ -332,14 +392,23 @@ export default function Event() {
       </div>
 
       <div className="event__action" style={{ position: 'relative' }}>
+        {event.registration_url && (
+          <a
+            href={event.registration_url}
+            className="event-register--btn"
+            onClick={(e) => handleOpenLink(e, event.registration_url)}
+          >
+            Зарегистрироваться
+          </a>
+        )}
+        
         <a
-          href={event.registration_url}
-          className="event-register--btn"
-          onClick={(e) => handleOpenLink(e, event.registration_url)}
+          href={event.event_url}
+          className="event-url--btn"
+          onClick={(e) => handleOpenLink(e, event.event_url)}
         >
-          Зарегистрироваться
+          Ссылка на сайт
         </a>
-
         {event.start_date && (
           <>
             <button

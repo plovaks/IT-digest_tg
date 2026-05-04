@@ -94,7 +94,9 @@
     font-weight: 500;
 }
 
-.event-register--btn, .event-addToCalendar--btn{
+.event-register--btn, 
+.event-addToCalendar--btn,
+.event-url--btn{
     margin: 20px auto 0;
     padding: 8px 10px;
     background-color: #1032A1;
