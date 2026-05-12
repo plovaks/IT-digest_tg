@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <script>
+      const path = window.location.pathname;
+      const search = window.location.search;
+      const hash = window.location.hash;
+      const redirect = path + search + hash;
+      sessionStorage.setItem('redirect', redirect);
+      window.location.replace('/IT-digest_tg/');
+    </script>
+  </head>
+  <body></body>
+</html>
