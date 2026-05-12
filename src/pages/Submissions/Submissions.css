@@ -787,3 +787,45 @@
 .submission-status-badge{
   margin-bottom: 10px;
 }
+
+.contacts-group {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.contact-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.contact-field label {
+  font-size: 13px;
+  color: var(--gray-text);
+  font-weight: 500;
+}
+
+.contact-hint {
+  font-size: 13px;
+  color: var(--gray-text);
+  margin: 0;
+}
+
+
+.contact-field .question-input.error {
+  border-color: #e74c3c;
+  background-color: #fff5f5;
+}
+
+.error-hint {
+  font-size: 12px;
+  color: #e74c3c;
+  margin-top: 5px;
+}
+
+.contact-hint {
+  font-size: 13px;
+  color: #666;
+  margin: 10px 0;
+}

@@ -68,12 +68,14 @@ export default function Submissions() {
     { id: "date_time", text: "*Выбери дату :", type: "datetime", optional: false },
     { id: "expected_attendees", text: "Ожидаемое количество участников?", type: "number", optional: true },
     { id: "description", text: "Расскажите о событии", type: "textarea", maxLength: 2000, optional: true },
+    
     { id: "organizers", text: "Организаторы:", type: "tags", optional: true },
     { id: "speakers", text: "Ключевые спикеры ", type: "tags", optional: true },
     { id: "event_url", text: "Ссылка на мероприятие", type: "url", optional: true },
     { id: "address", text: "Адрес проведения (обязательно для офлайн-мероприятий, для онлайн можно пропустить). Если у тебя еще нет площадки, то можешь написать 'Ищу площадку'", type: "address", optional: false },
     { id: "price", text: "Стоимость участия в рублях (введите 0 если бесплатно, или пропустите)", type: "price", optional: true },
-    { id: "registration_url", text: "Ссылка для регистрации (если отличается от ссылки на мероприятие, или можно пропустить)", type: "url", optional: true }
+    { id: "registration_url", text: "Ссылка для регистрации (если отличается от ссылки на мероприятие, или можно пропустить)", type: "url", optional: true },
+    { id: "contacts", text: "*Контактные данные", type: "contacts", optional: false }
   ];
 
   const currentQuestion = questions[step];
@@ -317,6 +319,23 @@ export default function Submissions() {
       }
     }
     
+    if (q.id === "contacts") {
+      if (!formData.contact_person || formData.contact_person.trim().length < 2) {
+        setError("Пожалуйста, укажите ФИО");
+        return false;
+      }
+      const hasContact = formData.contact_website?.trim() || 
+                        formData.contact_telegram?.trim() || 
+                        formData.contact_email?.trim();
+      if (!hasContact) {
+        setError("Укажите хотя бы один способ связи: сайт, Telegram или email");
+        return false;
+      }
+      setError(null);
+      return true;
+    }
+
+
     setError(null);
     return true;
   };
@@ -363,7 +382,7 @@ export default function Submissions() {
         organizers: formData.organizers.map(name => ({ name, url: "" })),
         speakers: formData.speakers.length > 0 ? formData.speakers.map(name => ({ name, url: "" })) : null,
         event_url: formData.event_url || null,
-        price: formData.price ? parseInt(formData.price) : null,
+        price: formData.price ? Math.max(0, parseInt(formData.price)) : null,
         registration_url: formData.registration_url || null,
         address: formData.address || null,
         start_time: formData.start_time || null,  
@@ -512,162 +531,270 @@ export default function Submissions() {
                 <span className="progress-text">Вопрос {step + 1} из {questions.length}</span>
               </div>
 
-              <div className="question-card">
-                <h2 className="question-title">{currentQuestion.text}</h2>
-                
-                {error && <div className="error-message">{error}</div>}
+                <div className="question-card">
+    <h2 className="question-title">{currentQuestion.text}</h2>
+    
+    {error && <div className="error-message">{error}</div>}
 
-                {currentQuestion.type === "text" && (
-                  <input
-                    type="text"
-                    className="question-input"
-                    value={formData[currentQuestion.id]}
-                    onChange={(e) => handleChange(currentQuestion.id, e.target.value)}
-                    autoFocus
-                  />
-                )}
+    {currentQuestion.type === "text" && (
+      <input
+        type="text"
+        className="question-input"
+        value={formData[currentQuestion.id]}
+        onChange={(e) => handleChange(currentQuestion.id, e.target.value)}
+        autoFocus
+      />
+    )}
 
-                {currentQuestion.type === "multiselect" && (
-                  <div className="chips-container">
-                    {currentQuestion.options.map(opt => (
-                      <span
-                        key={opt}
-                        className={`chip ${formData[currentQuestion.id]?.includes(opt) ? "active" : ""}`}
-                        onClick={() => handleMultiselect(currentQuestion.id, opt)}
-                      >
-                        {opt}
-                      </span>
-                    ))}
-                  </div>
-                )}
+    {currentQuestion.type === "multiselect" && (
+      <div className="chips-container">
+        {currentQuestion.options.map(opt => (
+          <span
+            key={opt}
+            className={`chip ${formData[currentQuestion.id]?.includes(opt) ? "active" : ""}`}
+            onClick={() => handleMultiselect(currentQuestion.id, opt)}
+          >
+            {opt}
+          </span>
+        ))}
+      </div>
+    )}
 
-                {currentQuestion.type === "datetime" && (
-                  <div className="datetime-group">
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label>Дата начала *</label>
-                        <input type="date" value={formData.start_date} onChange={(e) => handleDateTime("start_date", e.target.value)} />
-                      </div>
-                      <div className="form-group">
-                        <label>Время начала</label>
-                        <input type="time" value={formData.start_time} onChange={(e) => handleDateTime("start_time", e.target.value)} />
-                      </div>
-                    </div>
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label>Дата окончания *</label>
-                        <input type="date" value={formData.end_date} onChange={(e) => handleDateTime("end_date", e.target.value)} />
-                      </div>
-                      <div className="form-group">
-                        <label>Время окончания</label>
-                        <input type="time" value={formData.end_time} onChange={(e) => handleDateTime("end_time", e.target.value)} />
-                      </div>
-                    </div>
-                    {(formData.start_date && !formData.end_date) && (
-                      <p className="error-hint">Пожалуйста, укажите дату окончания</p>
-                    )}
-                  </div>
-                )}
+    {currentQuestion.type === "datetime" && (
+      <div className="datetime-group">
+        <div className="form-row">
+          <div className="form-group">
+            <label>Дата начала *</label>
+            <input type="date" value={formData.start_date} onChange={(e) => handleDateTime("start_date", e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label>Время начала</label>
+            <input type="time" value={formData.start_time} onChange={(e) => handleDateTime("start_time", e.target.value)} />
+          </div>
+        </div>
+        <div className="form-row">
+          <div className="form-group">
+            <label>Дата окончания *</label>
+            <input type="date" value={formData.end_date} onChange={(e) => handleDateTime("end_date", e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label>Время окончания</label>
+            <input type="time" value={formData.end_time} onChange={(e) => handleDateTime("end_time", e.target.value)} />
+          </div>
+        </div>
+        {(formData.start_date && !formData.end_date) && (
+          <p className="error-hint">Пожалуйста, укажите дату окончания</p>
+        )}
+      </div>
+    )}
 
-                {currentQuestion.type === "textarea" && (
-                  <textarea
-                    className="question-textarea"
-                    rows={6}
-                    maxLength={currentQuestion.maxLength}
-                    value={formData[currentQuestion.id]}
-                    onChange={(e) => handleChange(currentQuestion.id, e.target.value)}
-                  />
-                )}
+    {currentQuestion.type === "textarea" && (
+      <textarea
+        className="question-textarea"
+        rows={6}
+        maxLength={currentQuestion.maxLength}
+        value={formData[currentQuestion.id]}
+        onChange={(e) => handleChange(currentQuestion.id, e.target.value)}
+      />
+    )}
 
-                {currentQuestion.type === "number" && (
-                  <div>
-                    <input
-                      type="number"
-                      className="question-input"
-                      value={formData[currentQuestion.id]}
-                      onChange={(e) => {
-                        const val = parseInt(e.target.value);
-                        if (val <= 1000 || !e.target.value) {
-                          handleChange(currentQuestion.id, e.target.value);
-                        }
-                      }}
-                      min="1"
-                      max="1000"
-                    />
-                    {parseInt(formData[currentQuestion.id]) > 1000 && (
-                      <p className="error-hint">Максимальное количество участников - 1000</p>
-                    )}
-                  </div>
-                )}
+    {currentQuestion.type === "number" && (
+      <div>
+        <input
+          type="number"
+          className="question-input"
+          value={formData[currentQuestion.id]}
+          onChange={(e) => {
+            const val = parseInt(e.target.value);
+            if (val <= 1000 || !e.target.value) {
+              handleChange(currentQuestion.id, e.target.value);
+            }
+          }}
+          min="1"
+          max="1000"
+        />
+        {parseInt(formData[currentQuestion.id]) > 1000 && (
+          <p className="error-hint">Максимальное количество участников - 1000</p>
+        )}
+      </div>
+    )}
 
-                {currentQuestion.type === "url" && (
-                  <input
-                    type="url"
-                    className="question-input"
-                    placeholder="https://"
-                    value={formData[currentQuestion.id] || ""}
-                    onChange={(e) => handleChange(currentQuestion.id, e.target.value)}
-                  />
-                )}
+    {currentQuestion.type === "url" && (
+      <input
+        type="url"
+        className="question-input"
+        placeholder="https://"
+        value={formData[currentQuestion.id] || ""}
+        onChange={(e) => handleChange(currentQuestion.id, e.target.value)}
+      />
+    )}
 
-                {currentQuestion.type === "price" && (
-                  <input
-                    type="number"
-                    className="question-input"
-                    value={formData[currentQuestion.id]}
-                    onChange={(e) => handleChange(currentQuestion.id, e.target.value)}
-                  />
-                )}
+    {currentQuestion.type === "price" && (
+      <div>
+        <input
+          type="number"
+          className="question-input"
+          value={formData[currentQuestion.id]}
+          onChange={(e) => {
+            const value = e.target.value;
+            if (value === '' || parseFloat(value) >= 0) {
+              handleChange(currentQuestion.id, value);
+            }
+          }}
+          onKeyDown={(e) => {
+            if (e.key === '-' || e.key === 'Minus') {
+              e.preventDefault();
+            }
+          }}
+          min="0"
+          step="1"
+        />
+        {formData[currentQuestion.id] && parseFloat(formData[currentQuestion.id]) < 0 && (
+          <p className="error-hint">Цена не может быть отрицательной</p>
+        )}
+      </div>
+    )}
 
-                {currentQuestion.type === "address" && (
-                  <textarea
-                    className="question-textarea"
-                    rows={3}
-                    value={formData.address}
-                    onChange={(e) => handleChange("address", e.target.value)}
-                  />
-                )}
+    {currentQuestion.type === "address" && (
+      <textarea
+        className="question-textarea"
+        rows={3}
+        value={formData.address}
+        onChange={(e) => handleChange("address", e.target.value)}
+      />
+    )}
 
-                {currentQuestion.type === "tags" && (
-                  <div className="tags-group">
-                    <div className="tags-list">
-                      {formData[currentQuestion.id].map((tag, idx) => (
-                        <span key={idx} className="tag">
-                          {tag}
-                          <button className="tag-remove" onClick={() => removeTag(currentQuestion.id, idx)}>×</button>
-                        </span>
-                      ))}
-                    </div>
-                    <div className="tag-input-group">
-                      <input
-                        type="text"
-                        className="tag-input"
-                        value={tempInput}
-                        onChange={(e) => setTempInput(e.target.value)}
-                        onKeyPress={(e) => {
-                          if (e.key === "Enter" && tempInput.trim()) {
-                            handleTags(currentQuestion.id, tempInput, true);
-                          }
-                        }}
-                      />
-                      <button className="add-tag-btn" onClick={() => handleTags(currentQuestion.id, tempInput, true)}>
-                        Добавить
-                      </button>
-                    </div>
-                  </div>
-                )}
+    {currentQuestion.type === "tags" && (
+      <div className="tags-group">
+        <div className="tags-list">
+          {formData[currentQuestion.id].map((tag, idx) => (
+            <span key={idx} className="tag">
+              {tag}
+              <button className="tag-remove" onClick={() => removeTag(currentQuestion.id, idx)}>×</button>
+            </span>
+          ))}
+        </div>
+        <div className="tag-input-group">
+          <input
+            type="text"
+            className="tag-input"
+            value={tempInput}
+            onChange={(e) => setTempInput(e.target.value)}
+            onKeyPress={(e) => {
+              if (e.key === "Enter" && tempInput.trim()) {
+                handleTags(currentQuestion.id, tempInput, true);
+              }
+            }}
+          />
+          <button className="add-tag-btn" onClick={() => handleTags(currentQuestion.id, tempInput, true)}>
+            Добавить
+          </button>
+        </div>
+      </div>
+    )}
 
+    
+    {currentQuestion.type === "contacts" && (
+  <div className="contacts-group">
+    <div className="contact-field">
+      <label>* ФИО </label>
+      <input
+        type="text"
+        className="question-input"
+        
+        value={formData.contact_person}
+        onChange={(e) => {
+          const value = e.target.value;
+          // Только буквы, пробелы, дефисы и точка
+          if (/^[а-яА-Яa-zA-Z\s\-\.]*$/.test(value)) {
+            handleChange("contact_person", value);
+            setError(null);
+          }
+        }}
+      />
+      {formData.contact_person && formData.contact_person.trim().length < 3 && (
+        <p className="error-hint">Введите корректное ФИО (минимум 3 символа)</p>
+      )}
+    </div>
+
+    <p className="contact-hint">* Укажите хотя бы один способ связи:</p>
+
+    <div className="contact-field">
+      <label>Telegram</label>
+      <input
+        type="text"
+        className="question-input"
+        placeholder="@username"
+        value={formData.contact_telegram}
+        onChange={(e) => {
+          let value = e.target.value;
+          // Убираем пробелы и приводим к нижнему регистру
+          value = value.replace(/\s/g, '');
+          if (!value.startsWith('@')) {
+            value = value;
+          }
+          handleChange("contact_telegram", value);
+          setError(null);
+        }}
+      />
+      {formData.contact_telegram && !/^@?[a-zA-Z0-9_]{5,32}$/.test(formData.contact_telegram.replace('@', '')) && (
+        <p className="error-hint">Неверный формат Telegram</p>
+      )}
+    </div>
+
+    <div className="contact-field">
+      <label>Email</label>
+      <input
+        type="email"
+        className="question-input"
+        placeholder="me@mail.ru"
+        value={formData.contact_email}
+        onChange={(e) => {
+          const value = e.target.value.toLowerCase();
+          handleChange("contact_email", value);
+          setError(null);
+        }}
+      />
+      {formData.contact_email && !/^[^\s@]+@([^\s@.,]+\.)+[^\s@.,]{2,}$/.test(formData.contact_email) && (
+        <p className="error-hint">Неверный формат email</p>
+      )}
+    </div>
+
+    <div className="contact-field">
+      <label>Сайт</label>
+      <input
+        type="url"
+        className="question-input"
+        placeholder="https://sber.ru"
+        value={formData.contact_website}
+        onChange={(e) => {
+          let value = e.target.value;
+          
+          if (value && !value.startsWith('http://') && !value.startsWith('https://') && value.includes('.')) {
+            value = `https://${value}`;
+          }
+          handleChange("contact_website", value);
+          setError(null);
+        }}
+      />
+      {formData.contact_website && !/^https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&\/=]*)$/.test(formData.contact_website) && (
+        <p className="error-hint">Неверный формат ссылки</p>
+      )}
+    </div>
+  </div>
+)}
                 <div className="question-nav">
-                  {step > 0 && (
-                    <button className="back-btn" onClick={prevStep}>
-                      <img src={backArr} alt="back" />
+                    {step > 0 && (
+                      <button className="back-btn" onClick={prevStep}>
+                        <img src={backArr} alt="back" />
+                      </button>
+                    )}
+                    <button className="next-btn" onClick={nextStep}>
+                      {step === questions.length - 1 ? "Посмотреть событие" : "Далее"}
                     </button>
-                  )}
-                  <button className="next-btn" onClick={nextStep}>
-                    {step === questions.length - 1 ? "Посмотреть событие" : "Далее"}
-                  </button>
+                  </div>
                 </div>
-              </div>
+              
             </>
           ) : (
             <div className="submissions-preview">
@@ -691,6 +818,7 @@ export default function Submissions() {
           )}
         </>
       )}
+      
 
       {activeMainTab === 'mySubmissions' && (
   <div className="my-submissions">

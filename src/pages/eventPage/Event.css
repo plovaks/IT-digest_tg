@@ -124,6 +124,7 @@
     display: flex;
     align-items: center;
     gap:8px; 
+    position: relative;
 
 }
 
@@ -134,7 +135,7 @@
     font-weight: 400;
     font-size: 16px;
     border-radius:10px;
-    align-self: center;
+    align-self: flex-start;
     cursor: pointer;
 }
 
@@ -214,20 +215,35 @@ a.organizer-chip:active {
     background-color: #d0d7ee;
 }
 
+.calendar--btn img{
+    width: 24px;
+}
+
+.calendar--btn{
+    display: flex;
+    align-items: center;
+    gap:8px;
+}
+
+
 .calendar-dropdown{
     position: absolute;
-    bottom: 110%;
-    right: 0;
-    background-color: var(--tg-theme-bg-color, #fff);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-    border-radius: 12px;
-    padding: 8px;
+    right:-3px;
+    background: var(--tg-theme-bg-color, #fff);
+    border-radius: 18px;
+    padding: 10px;
+    top:58px;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 8px;
+    min-width: 240px;
+    box-shadow:
+        0 10px 30px rgba(0,0,0,0.08),
+        0 2px 8px rgba(0,0,0,0.04);
+
     z-index: 100;
-    min-width: 160px;
-    border: 1px solid var(--tg-theme-hint-color, #ccc);
+    animation: dropdownShow .22s ease;
+    margin-bottom: 20px;
 }
 
 .calendar-dropdown button{
@@ -269,4 +285,34 @@ a.organizer-chip:active {
 .status-rejected {
   background: #ffebee;
   color: #f44336;
+}
+
+.event-back-btn {
+  position: sticky;
+  top: 0;
+  left: 0;
+  background: transparent;
+  border: none;
+  font-size: 16px;
+  color: #007aff;
+  padding: 12px 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 10;
+  background: white;
+  width: 100%;
+}
+
+
+
+.back-to-digest-btn {
+  margin-top: 20px;
+  padding: 10px 20px;
+  background: #007aff;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
 }

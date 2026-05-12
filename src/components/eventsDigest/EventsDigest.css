@@ -214,10 +214,10 @@
   transition: all 0.2s;
 }
 
-.pagination-btn:hover:not(:disabled) {
+/* .pagination-btn:hover:not(:disabled) {
   transform: translateY(-2px);
   background: linear-gradient(135deg, #0882ff, #62ecff);
-}
+} */
 
 .pagination-btn:disabled {
   opacity: 0.5;

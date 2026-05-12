@@ -1,4 +1,4 @@
-import { useParams, useLocation } from "react-router-dom";
+import { useParams, useLocation, useNavigate, Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import currency from "../../assets/icons/currency.svg";
 import date from "../../assets/icons/DateRange.svg";
@@ -7,17 +7,28 @@ import time from "../../assets/icons/time.svg";
 import partType from "../../assets/icons/partType.svg";
 import webIcon from "../../assets/icons/web.svg";
 import blueCalendar from "../../assets/icons/calendarBlue.svg";
+import yandex from "../../assets/icons/Yandex.svg"
+import google from "../../assets/icons/Google.svg"
+import backIcon from "../../assets/icons/backArrow.svg"; 
 
 import './Event.css';
 
 export default function Event({ embeddedId, isPreview = false, status }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const { id: paramId } = useParams();
   const id = embeddedId || paramId;
 
   const fromProfileEvents = location.state?.from === 'profile-events';
   const token = location.state?.token || localStorage.getItem('access_token');
   const userId = location.state?.userId || localStorage.getItem('user_id');
+  
+  // Получаем сохраненное состояние для возврата
+  const returnState = {
+    weekOffset: location.state?.weekOffset,
+    page: location.state?.page,
+    searchQuery: location.state?.searchQuery
+  };
 
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -25,6 +36,23 @@ export default function Event({ embeddedId, isPreview = false, status }) {
   const [activeTab, setActiveTab] = useState('description');
   const [addToCalendar, setAddToCalendar] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Функция для возврата на дайджест с сохранением состояния
+  const handleBack = () => {
+    // Если есть состояние для возврата, передаем его
+    if (returnState.weekOffset !== undefined || returnState.page !== undefined || returnState.searchQuery !== undefined) {
+      navigate('/', { 
+        state: {
+          weekOffset: returnState.weekOffset,
+          page: returnState.page,
+          searchQuery: returnState.searchQuery
+        }
+      });
+    } else {
+      // Если нет состояния, просто возвращаемся назад
+      navigate(-1);
+    }
+  };
 
   // Функция для форматирования строки времени
   const formatTime = (timeStr) => {
@@ -88,6 +116,9 @@ export default function Event({ embeddedId, isPreview = false, status }) {
         if (response.ok) {
           const data = await response.json();
           console.log('Event data loaded');
+          console.log('   event_url:', data.event_url);
+          console.log('   registration_url:', data.registration_url);
+          
           setEvent(data);
           if (activeTab === 'speakers' && !data.speakers?.length) setActiveTab('description');
           if (activeTab === 'organizers' && !data.organizers?.length) setActiveTab('description');
@@ -278,6 +309,9 @@ export default function Event({ embeddedId, isPreview = false, status }) {
       <div className={`event ${isPreview ? 'event-preview' : ''}`}>
         <div className="event__not-found">
           <p>{error}</p>
+          <button onClick={handleBack} className="back-to-digest-btn">
+            Вернуться к списку
+          </button>
         </div>
       </div>
     );
@@ -286,13 +320,23 @@ export default function Event({ embeddedId, isPreview = false, status }) {
   if (!event) {
     return (
       <div className={`event ${isPreview ? 'event-preview' : ''}`}>
-        <div className="event__not-found">Событие не найдено</div>
+        <div className="event__not-found">
+          Событие не найдено
+          <button onClick={handleBack} className="back-to-digest-btn">
+            Вернуться к списку
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
     <div className={`event ${isPreview ? 'event-preview' : ''}`}>
+      {/* Кнопка возврата */}
+      {/* <button onClick={handleBack} className="event-back-btn">
+        Назад
+      </button> */}
+
       {/* Блок статуса для режима предпросмотра (заявки) */}
       {isPreview && status && (
         <div className="event-status-banner">
@@ -353,7 +397,7 @@ export default function Event({ embeddedId, isPreview = false, status }) {
           {event.participation_type && (
             <div className="event__partType">
               <img src={partType} alt="person speaking icon" />
-              {event.participation_type}
+              {event.participation_type?.join(', ')}
             </div>
           )}
 
@@ -411,18 +455,26 @@ export default function Event({ embeddedId, isPreview = false, status }) {
 
                 <div className="event__action" style={{ position: 'relative' }}>
                   {event.registration_url && (
-                    <a
-                      href={event.registration_url}
-                      className="event-register--btn"
-                      onClick={(e) => handleOpenLink(e, event.registration_url)}
-                    >
-                      Регистрация
-                    </a>
-                  )}
+                      <a
+                        href={event.registration_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if (event.registration_url) {
+                            handleOpenLink(e, event.registration_url);
+                          }
+                        }}
+                        className="event-register--btn"
+                      >
+                        Регистрация
+                      </a>
+                    )}
 
-                  {/* Кнопка "В календарь" - НЕ показываем в режиме предпросмотра и в заявках из профиля */}
+
+                  {/* Кнопка "В календарь"  */}
                   {!isPreview && !fromProfileEvents && event.start_date && (
-                    <>
+                    <div className="calendar-wrapper" style={{ paddingBottom: addToCalendar ? '110px' : '0' }}>
                       <button
                         onClick={() => setAddToCalendar(!addToCalendar)}
                         className="event-addToCalendar--btn"
@@ -434,15 +486,17 @@ export default function Event({ embeddedId, isPreview = false, status }) {
 
                       {addToCalendar && (
                         <div className="calendar-dropdown">
-                          <button onClick={() => handleAddToCalendar('google')} disabled={isProcessing}>
+                          <button onClick={() => handleAddToCalendar('google')} disabled={isProcessing} className="calendar--btn">
+                            <img src={google} alt='google icon'/>
                             Google Календарь
                           </button>
-                          <button onClick={() => handleAddToCalendar('yandex')} disabled={isProcessing}>
+                          <button onClick={() => handleAddToCalendar('yandex')} disabled={isProcessing} className="calendar--btn">
+                            <img src={yandex} alt='yandex icon'/>
                             Яндекс Календарь
                           </button>
                         </div>
                       )}
-                    </>
+                    </div>
                   )}
                 </div>
               </div>

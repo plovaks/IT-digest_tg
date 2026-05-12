@@ -590,7 +590,7 @@
 }
 
 .assistant-delete-btn {
-  background: #ff4444;
+  background: #f18e8e;
   color: white;
   border: none;
   padding: 6px 12px;
@@ -599,9 +599,7 @@
   font-size: 12px;
 }
 
-.assistant-delete-btn:hover {
-  background: #cc0000;
-}
+
 
 .add-helper-btn {
   width: 100%;
@@ -727,4 +725,63 @@
     opacity: 1;
     transform: translateX(-50%) translateY(0);
   }
+}
+
+
+
+/* Кнопка создания инвайта */
+.create-invite-btn {
+  width: 100%;
+  padding: 12px;
+  border: 1px #4F77F1 solid;
+  color: #4F77F1;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: 'Montserrat', sans-serif;
+  cursor: pointer;
+  margin-bottom: 16px;
+}
+
+
+
+/* Модалка инвайта */
+.invite-link-container {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.invite-link-input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #333;
+  background: #f5f5f5;
+  min-width: 0; 
+}
+
+.copy-link-btn {
+  padding: 10px 16px;
+  background: #1032A1;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: 'Montserrat', sans-serif;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.copy-link-btn:active {
+  background: #0c2880;
+}
+
+.invite-expires {
+  font-size: 12px;
+  color: #aaa;
+  margin: 0 0 12px 0;
 }

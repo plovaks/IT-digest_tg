@@ -15,7 +15,9 @@ export function Profile() {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteLink, setInviteLink] = useState(null);
   const [isCreatingInvite, setIsCreatingInvite] = useState(false);
-  
+  const [showFilterSuccessModal, setShowFilterSuccessModal] = useState(false);
+const [showCopySuccessModal, setShowCopySuccessModal] = useState(false);
+const [showDeleteSuccessModal, setShowDeleteSuccessModal] = useState(false);
   // Остальные состояния
   const [isSaving, setIsSaving] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -123,19 +125,19 @@ export function Profile() {
     }
   };
 
-  const applyFilters = async () => {
-    if (!token || !userData) return;
-    
-    try {
-      await saveFiltersToServer(filters);
-      setShowModal(true);
-      setTimeout(() => setShowModal(false), 1500);
-    } catch (error) {
-      console.error('Ошибка:', error);
-      setError('Не удалось сохранить фильтры');
-      setTimeout(() => setError(null), 3000);
-    }
-  };
+const applyFilters = async () => {
+  if (!token || !userData) return;
+  
+  try {
+    await saveFiltersToServer(filters);
+    setShowFilterSuccessModal(true);
+    setTimeout(() => setShowFilterSuccessModal(false), 1500);
+  } catch (error) {
+    console.error('Ошибка:', error);
+    setError('Не удалось сохранить фильтры');
+    setTimeout(() => setError(null), 3000);
+  }
+};
 
   useEffect(() => {
     const accessToken = localStorage.getItem('access_token');
@@ -239,37 +241,37 @@ export function Profile() {
   };
 
   // Удаление помощника
-  const deleteHelper = async (assistantId) => {
-    if (!token || !userData) return;
+const deleteHelper = async (assistantId) => {
+  if (!token || !userData) return;
 
-    try {
-      const response = await fetch(
-        `https://ritmevents.ru/api/v1/users/${userData.id}/assistants/${assistantId}`,
-        {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
+  try {
+    const response = await fetch(
+      `https://ritmevents.ru/api/v1/users/${userData.id}/assistants/${assistantId}`,
+      {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
-      );
-
-      if (response.status === 204 || response.ok) {
-        setAssistants(prev => prev.filter(assistant => assistant.id !== assistantId));
-        setShowModal(true);
-        setTimeout(() => setShowModal(false), 1500);
-      } else if (response.status === 404) {
-        setError("Помощник не найден");
-        setTimeout(() => setError(null), 3000);
-      } else {
-        throw new Error("Ошибка при удалении");
       }
-    } catch (err) {
-      console.error('Ошибка:', err);
-      setError("Не удалось удалить помощника");
+    );
+
+    if (response.status === 204 || response.ok) {
+      setAssistants(prev => prev.filter(assistant => assistant.id !== assistantId));
+      setShowDeleteSuccessModal(true);
+      setTimeout(() => setShowDeleteSuccessModal(false), 1500);
+    } else if (response.status === 404) {
+      setError("Помощник не найден");
       setTimeout(() => setError(null), 3000);
+    } else {
+      throw new Error("Ошибка при удалении");
     }
-  };
+  } catch (err) {
+    console.error('Ошибка:', err);
+    setError("Не удалось удалить помощника");
+    setTimeout(() => setError(null), 3000);
+  }
+};
 
 
 // Создание инвайт-ссылки
@@ -304,7 +306,7 @@ const createInviteLink = async () => {
       
       
       
-      const inviteUrl = `${window.location.origin}/IT-digest_tg/invite/assistant/${data.token}`;
+      const inviteUrl = `https://t.me/sber_events_agg_bot?startapp=invite_${data.token}`;
       
       
       console.log('[createInviteLink] Invite URL (GitHub Pages):', inviteUrl);
@@ -329,13 +331,13 @@ const createInviteLink = async () => {
 };
 
   // Копирование ссылки в буфер обмена
-  const copyInviteLink = () => {
-    if (inviteLink?.invite_url) {
-      navigator.clipboard.writeText(inviteLink.invite_url);
-      setShowModal(true);
-      setTimeout(() => setShowModal(false), 1500);
-    }
-  };
+const copyInviteLink = () => {
+  if (inviteLink?.invite_url) {
+    navigator.clipboard.writeText(inviteLink.invite_url);
+    setShowCopySuccessModal(true);
+    setTimeout(() => setShowCopySuccessModal(false), 1500);
+  }
+};
 
   // Отзыв инвайт-ссылки
   const revokeInviteLink = async () => {
@@ -534,13 +536,28 @@ const createInviteLink = async () => {
       </div>
 
       <div className="profile__tabs-content">
-        {showModal && (
-          <div className="filter-success-modal">
-            <div className="filter-success-content">
-              <p>Фильтры сохранены!</p>
+         {showFilterSuccessModal && (
+            <div className="filter-success-modal">
+              <div className="filter-success-content">
+                <p>Фильтры сохранены!</p>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+          {showDeleteSuccessModal && (
+  <div className="filter-success-modal">
+    <div className="filter-success-content">
+      <p>Помощник удалён</p>
+    </div>
+  </div>
+)}
+
+{showCopySuccessModal && (
+  <div className="filter-success-modal">
+    <div className="filter-success-content">
+      <p>Ссылка скопирована!</p>
+    </div>
+  </div>
+)}
         
         {/* фильтры */}
         {activeTab === 'myFilters' && (
@@ -786,9 +803,9 @@ const createInviteLink = async () => {
                       <div key={assistant.id} className="profile-assistant-item">
                         <div className="assistant-info">
                           <span className="assistant-name">{assistant.username || `Помощник ${assistant.id}`}</span>
-                          {assistant.telegram_id && (
+                          {/* {assistant.telegram_id && (
                             <span className="assistant-telegram-id">TG ID: {assistant.telegram_id}</span>
-                          )}
+                          )} */}
                         </div>
                         <button 
                           className="assistant-delete-btn"
@@ -822,9 +839,9 @@ const createInviteLink = async () => {
                       Копировать
                     </button>
                   </div>
-                  <p className="invite-expires">
+                  {/* <p className="invite-expires">
                     Ссылка действительна до: {new Date(inviteLink.expires_at).toLocaleString()}
-                  </p>
+                  </p> */}
                   <div className="modal-actions">
                     <button className="modal-cancel-btn" onClick={() => setShowInviteModal(false)}>
                       Закрыть

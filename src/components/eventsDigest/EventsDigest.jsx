@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Button, Placeholder } from '@telegram-apps/telegram-ui';
 import './EventsDigest.css';
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import Filters from "../Filters/Filters";
 import { CITIES, CATEGORIES, EVENT_TYPES, PARTICIPATION_TYPES } from "../../data/filters.js"
+import { useAuth } from "../useAuth.jsx";
+import { openLink } from "../../data/platformService.js"
 
 import dateIcon from "../../assets/icons/DateRange.svg";
 import timeIcon from "../../assets/icons/time.svg";
@@ -11,6 +13,7 @@ import priceIcon from "../../assets/icons/currency.svg";
 import placeIcon from "../../assets/icons/Place.svg";
 import partType from "../../assets/icons/partType.svg";
 import webIcon from "../../assets/icons/web.svg"
+
 
 const ITEMS_PER_PAGE = 20;
 
@@ -23,7 +26,6 @@ const isEventPassed = (eventDate, eventTime) => {
   const eventDateTime = new Date(eventDate);
   const now = new Date();
   
-  
   if (eventTime && eventTime.trim() !== '') {
     let hours = 0, minutes = 0;
     if (eventTime.includes(':')) {
@@ -32,18 +34,14 @@ const isEventPassed = (eventDate, eventTime) => {
       minutes = parseInt(timeParts[1], 10);
     }
     eventDateTime.setHours(hours, minutes, 0, 0);
-    
-    
     return eventDateTime < now;
   }
-  
   
   const eventDateOnly = new Date(eventDate);
   eventDateOnly.setHours(0, 0, 0, 0);
   
   const todayDateOnly = new Date();
   todayDateOnly.setHours(0, 0, 0, 0);
-  
   
   return eventDateOnly < todayDateOnly;
 };
@@ -64,7 +62,7 @@ const getWeekRange = (offset = 0) => {
   };
   
   const formatISO = (date) => date.toISOString().split('T')[0];
-  console.log('Диапазон дат:', formatISO(startDate), '-', formatISO(endDate)); 
+  
   return {
     start: formatDateStr(startDate),
     end: formatDateStr(endDate),
@@ -73,26 +71,54 @@ const getWeekRange = (offset = 0) => {
   };
 };
 
-
-
-
 export default function EventsDigest({ filters, setFilters }) {
-  const [currentWeekOffset, setCurrentWeekOffset] = useState(0); 
+  // 
+  const {
+    platform,
+    token,
+    userId,
+    userData,
+    isAuthReady,
+    isCheckingAuth,
+    showInputCode,
+    setShowInputCode,
+    authError
+  } = useAuth();
+  
+  useEffect(() => {
+  console.log('=== CURRENT PLATFORM ===', platform);
+  console.log('window.WebApp:', window.WebApp);
+  console.log('window.WebApp?.initData:', window.WebApp?.initData);
+}, [platform]);
+
+  const location = useLocation();
+  
+  // Состояния для дайджеста
+  const [currentWeekOffset, setCurrentWeekOffset] = useState(() => {
+    if (location.state?.weekOffset !== undefined) return location.state.weekOffset;
+    const saved = sessionStorage.getItem('events_week_offset');
+    return saved ? parseInt(saved) : 0;
+  });
+  
+  const [currentPage, setCurrentPage] = useState(() => {
+    if (location.state?.page !== undefined) return location.state.page;
+    const saved = sessionStorage.getItem('events_page');
+    return saved ? parseInt(saved) : 0;
+  });
+  
+  const [searchQuery, setSearchQuery] = useState(() => {
+    if (location.state?.searchQuery !== undefined) return location.state.searchQuery;
+    return sessionStorage.getItem('events_search_query') || '';
+  });
+  
   const [weekRange, setWeekRange] = useState({ start: '', end: '' });
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  const [isAuthReady, setIsAuthReady] = useState(false);
-  const [token, setToken] = useState(null);
-  const [userId, setUserId] = useState(null);
   const [events, setEvents] = useState([]);
   const [isLoadingEvents, setIsLoadingEvents] = useState(false);
   const [code, setCode] = useState('');
-  const [showInputCode, setShowInputCode] = useState(false);
   const [loginError, setLoginError] = useState('');
-  const [currentPage, setCurrentPage] = useState(0);
   const [totalEvents, setTotalEvents] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
-  const [searchQuery, setSearchQuery] = useState('');
   const searchDebounceRef = useRef(null);
 
   const activeCount = Object.values(filters).flat().length;
@@ -100,19 +126,38 @@ export default function EventsDigest({ filters, setFilters }) {
   const isSearchMode = searchQuery.trim().length > 0;
 
   
+  useEffect(() => {
+    if (platform === 'telegram' && window.Telegram?.WebApp?.expand) {
+      window.Telegram.WebApp.expand();
+    }
+  }, [platform]);
+  useEffect(() => {
+    if (userData) {
+      const newFilters = {
+        cities: userData.city ? userData.city.split(',').map(c => c.trim()).filter(Boolean) : [],
+        categories: userData.track ? userData.track.split(',').map(t => t.trim()).filter(Boolean) : [],
+        eventTypes: userData.preferred_event_types ? userData.preferred_event_types.split(',').map(e => e.trim()).filter(Boolean) : [],
+        participationTypes: userData.preferred_participation_types ? userData.preferred_participation_types.split(',').map(p => p.trim()).filter(Boolean) : []
+      };
+      setFilters(newFilters);
+    }
+  }, [userData, setFilters]);
+
+  // Сохраняем состояние в sessionStorage
+  useEffect(() => {
+    sessionStorage.setItem('events_week_offset', currentWeekOffset);
+    sessionStorage.setItem('events_page', currentPage);
+    sessionStorage.setItem('events_search_query', searchQuery);
+  }, [currentWeekOffset, currentPage, searchQuery]);
 
   const handleInvalidToken = useCallback(() => {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user_id');
-    setToken(null);
-    setIsAuthReady(false);
-    setUserId(null);
     setShowInputCode(true);
-  }, []);
+  }, [setShowInputCode]);
 
   // Сохранение фильтров на сервер 
-
   const saveFiltersToServer = useCallback(async (newFilters, authToken, uid) => {
     if (!authToken || !uid) return;
     try {
@@ -136,8 +181,7 @@ export default function EventsDigest({ filters, setFilters }) {
     }
   }, [handleInvalidToken]);
 
-  //Основной fetch событий 
-
+  // Основной fetch событий 
   const fetchEvents = useCallback(async (page = currentPage) => {
     if (!hasFilters || !isAuthReady) {
       setEvents([]);
@@ -149,16 +193,16 @@ export default function EventsDigest({ filters, setFilters }) {
     setIsLoadingEvents(true);
     try {
       const { startISO, endISO } = getWeekRange(currentWeekOffset);
-    const url = new URL('https://ritmevents.ru/api/v1/events');
+      const url = new URL('https://ritmevents.ru/api/v1/events');
 
-    filters.cities.forEach(c => url.searchParams.append('city', c));
-    filters.categories.forEach(c => url.searchParams.append('track', c));
-    filters.eventTypes.forEach(t => url.searchParams.append('event_type', t));
-    filters.participationTypes.forEach(t => url.searchParams.append('participation_type', t));
-    url.searchParams.append('date_from', startISO);  
-    url.searchParams.append('date_to', endISO);      
-    url.searchParams.append('limit', ITEMS_PER_PAGE);
-    url.searchParams.append('offset', page * ITEMS_PER_PAGE);
+      filters.cities.forEach(c => url.searchParams.append('city', c));
+      filters.categories.forEach(c => url.searchParams.append('track', c));
+      filters.eventTypes.forEach(t => url.searchParams.append('event_type', t));
+      filters.participationTypes.forEach(t => url.searchParams.append('participation_type', t));
+      url.searchParams.append('date_from', startISO);  
+      url.searchParams.append('date_to', endISO);      
+      url.searchParams.append('limit', ITEMS_PER_PAGE);
+      url.searchParams.append('offset', page * ITEMS_PER_PAGE);
 
       const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
       const res = await fetch(url.toString(), { headers });
@@ -178,7 +222,6 @@ export default function EventsDigest({ filters, setFilters }) {
       } else {
         setEvents([]);
       }
-
     } catch (e) {
       console.error('Ошибка загрузки событий:', e);
       setEvents([]);
@@ -186,8 +229,6 @@ export default function EventsDigest({ filters, setFilters }) {
       setIsLoadingEvents(false);
     }
   }, [filters, token, hasFilters, isAuthReady, handleInvalidToken, currentPage, currentWeekOffset]);
-
-  // 
 
   const fetchAndSetEventsByIds = useCallback(async (ids, page) => {
     if (!ids || ids.length === 0) {
@@ -210,9 +251,9 @@ export default function EventsDigest({ filters, setFilters }) {
         })
       );
       const validEvents = results.filter(event => 
-  event && !isEventPassed(event.start_date, event.start_time)
-);
-setEvents(validEvents);
+        event && !isEventPassed(event.start_date, event.start_time)
+      );
+      setEvents(validEvents);
     } catch (e) {
       console.error('Ошибка загрузки событий по ID:', e);
       setEvents([]);
@@ -221,247 +262,139 @@ setEvents(validEvents);
     }
   }, [token]);
 
-
-
-
-
-
-// Переключение на следующую неделю 
-const nextWeek = () => {
-  setCurrentWeekOffset(prev => prev + 1);
-  setCurrentPage(0);
-};
-
-// Переключение на предыдущую неделю 
-const prevWeek = () => {
-  if (currentWeekOffset > 0) {
-    setCurrentWeekOffset(prev => prev - 1);
+  // Переключение недель
+  const nextWeek = () => {
+    setCurrentWeekOffset(prev => prev + 1);
     setCurrentPage(0);
-  }
-};
+  };
 
+  const prevWeek = () => {
+    if (currentWeekOffset > 0) {
+      setCurrentWeekOffset(prev => prev - 1);
+      setCurrentPage(0);
+    }
+  };
 
-useEffect(() => {
-  const range = getWeekRange(currentWeekOffset);
-  setWeekRange({ start: range.start, end: range.end });
-}, [currentWeekOffset]);
+  useEffect(() => {
+    const range = getWeekRange(currentWeekOffset);
+    setWeekRange({ start: range.start, end: range.end });
+  }, [currentWeekOffset]);
 
   const runSearch = useCallback(async (query, page = 0) => {
-  console.log('runSearch запущен, query:', query);
-  setEvents([]);
-  setIsLoadingEvents(true);
-  try {
-    const { startISO, endISO } = getWeekRange(currentWeekOffset);
-    
-    
-    const body = {
-      query: query,
-      limit: ITEMS_PER_PAGE,
-      offset: page * ITEMS_PER_PAGE,
-      date_from: startISO,
-      date_to: endISO
-    };
-
-    
-    
-    console.log('Отправляемый body:', JSON.stringify(body, null, 2));
-
-    const res = await fetch('https://ritmevents.ru/api/v1/search', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token && { 'Authorization': `Bearer ${token}` })
-      },
-      body: JSON.stringify(body)
-    });
-
-    console.log('Статус ответа:', res.status);
-
-    if (res.ok) {
-      const data = await res.json();
-      console.log('Полученные данные:', data);
+    console.log('runSearch запущен, query:', query);
+    setEvents([]);
+    setIsLoadingEvents(true);
+    try {
+      const { startISO, endISO } = getWeekRange(currentWeekOffset);
       
-      const ids = data.event_ids || [];
-      console.log('Найдено ID событий:', ids.length);
-      
-      setTotalEvents(ids.length);
-      setTotalPages(Math.ceil(ids.length / ITEMS_PER_PAGE));
-      
-      if (ids.length > 0) {
-        await fetchAndSetEventsByIds(ids, page);
+      const body = {
+        query: query,
+        limit: ITEMS_PER_PAGE,
+        offset: page * ITEMS_PER_PAGE,
+        date_from: startISO,
+        date_to: endISO
+      };
+
+      const res = await fetch('https://ritmevents.ru/api/v1/search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        },
+        body: JSON.stringify(body)
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const ids = data.event_ids || [];
+        
+        setTotalEvents(ids.length);
+        setTotalPages(Math.ceil(ids.length / ITEMS_PER_PAGE));
+        
+        if (ids.length > 0) {
+          await fetchAndSetEventsByIds(ids, page);
+        } else {
+          setEvents([]);
+        }
       } else {
         setEvents([]);
+        setTotalEvents(0);
+        setTotalPages(0);
       }
+    } catch (e) {
+      console.error('Ошибка в runSearch:', e);
+      setEvents([]);
+    } finally {
+      setIsLoadingEvents(false);
+    }
+  }, [token, fetchAndSetEventsByIds, currentWeekOffset]);
+
+  useEffect(() => {
+    if (!isAuthReady) return;
+
+    if (searchQuery.trim()) {
+      runSearch(searchQuery.trim(), currentPage);
+      return;
+    }
+
+    if (hasFilters) {
+      fetchEvents(currentPage);
     } else {
-      const errorText = await res.text();
-      console.error('Ошибка API:', res.status, errorText);
       setEvents([]);
       setTotalEvents(0);
       setTotalPages(0);
     }
-  } catch (e) {
-    console.error('Ошибка в runSearch:', e);
-    setEvents([]);
-  } finally {
-    setIsLoadingEvents(false);
-  }
-}, [filters, token, fetchAndSetEventsByIds, currentWeekOffset, ITEMS_PER_PAGE]); 
-
+  }, [
+    isAuthReady,
+    filters,
+    currentPage,
+    searchQuery,
+    hasFilters,
+    runSearch,
+    fetchEvents,
+    currentWeekOffset
+  ]);
   
-
-  
-  useEffect(() => {
-  if (!isAuthReady) return;
-
-  if (searchQuery.trim()) {
-    runSearch(searchQuery.trim(), currentPage);
-    return;
-  }
-
-  if (hasFilters) {
-    fetchEvents(currentPage);
-  } else {
-    setEvents([]);
-    setTotalEvents(0);
-    setTotalPages(0);
-  }
-}, [
-  isAuthReady,
-  filters,
-  currentPage,
-  searchQuery,
-  hasFilters,
-  runSearch,
-  fetchEvents,
-  currentWeekOffset
-]);
-  
- const handleSearchChange = (e) => {
-  const val = e.target.value;
-
-  setSearchQuery(val);
-  setCurrentPage(0);
-};
+  const handleSearchChange = (e) => {
+    const val = e.target.value;
+    setSearchQuery(val);
+    setCurrentPage(0);
+  };
 
   const handleFilterChange = useCallback(async (newFilters) => {
-  setFilters(newFilters);
-  setCurrentPage(0);
-  if (token && userId && isAuthReady) {
-    await saveFiltersToServer(newFilters, token, userId);
-  }
-  if (searchQuery.trim()) {
-    runSearch(searchQuery.trim(), 0);
-  }
-}, [token, userId, setFilters, saveFiltersToServer, isAuthReady, searchQuery, runSearch]);
-
-  
-
-  
+    setFilters(newFilters);
+    setCurrentPage(0);
+    if (token && userId && isAuthReady) {
+      await saveFiltersToServer(newFilters, token, userId);
+    }
+    if (searchQuery.trim()) {
+      runSearch(searchQuery.trim(), 0);
+    }
+  }, [token, userId, setFilters, saveFiltersToServer, isAuthReady, searchQuery, runSearch]);
 
   const resetFilters = useCallback(async () => {
-  const empty = { cities: [], categories: [], eventTypes: [], participationTypes: [] };
-  setFilters(empty);
-  setCurrentPage(0);
-  if (token && userId && isAuthReady) {
-    await saveFiltersToServer(empty, token, userId);
-  }
- 
-  if (searchQuery.trim()) {
-    runSearch(searchQuery.trim(), 0);
-  }
-}, [token, userId, setFilters, saveFiltersToServer, isAuthReady, searchQuery, runSearch]);
-
-  //Пагинация 
+    const empty = { cities: [], categories: [], eventTypes: [], participationTypes: [] };
+    setFilters(empty);
+    setCurrentPage(0);
+    sessionStorage.removeItem('events_week_offset');
+    sessionStorage.removeItem('events_page');
+    sessionStorage.removeItem('events_search_query');
+    setCurrentWeekOffset(0);
+    setSearchQuery('');
+    
+    if (token && userId && isAuthReady) {
+      await saveFiltersToServer(empty, token, userId);
+    }
+    
+    if (searchQuery.trim()) {
+      runSearch(searchQuery.trim(), 0);
+    }
+  }, [token, userId, setFilters, saveFiltersToServer, isAuthReady, searchQuery, runSearch]);
 
   const goToPage = (page) => {
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
-
-  //Загрузка данных пользователя
-
-  const fetchUserData = useCallback(async (accessToken) => {
-    try {
-      const res = await fetch('https://ritmevents.ru/api/v1/users/me', {
-        headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' }
-      });
-
-      if (res.ok) {
-        const userData = await res.json();
-        setUserId(userData.id);
-        localStorage.setItem('user_id', String(userData.id));
-
-        const newFilters = {
-          cities: userData.city ? userData.city.split(',').map(c => c.trim()).filter(Boolean) : [],
-          categories: userData.track ? userData.track.split(',').map(t => t.trim()).filter(Boolean) : [],
-          eventTypes: userData.preferred_event_types
-            ? userData.preferred_event_types.split(',').map(e => e.trim()).filter(Boolean) : [],
-          participationTypes: userData.preferred_participation_types
-            ? userData.preferred_participation_types.split(',').map(p => p.trim()).filter(Boolean) : []
-        };
-
-        setFilters(newFilters);
-        setIsDrawerOpen(Object.values(newFilters).flat().length === 0);
-        setIsAuthReady(true);
-      } else if (res.status === 401) {
-        handleInvalidToken();
-      } else {
-        setIsDrawerOpen(true);
-        handleInvalidToken();
-      }
-    } catch (e) {
-      console.error('Ошибка загрузки пользователя:', e);
-      handleInvalidToken();
-    }
-  }, [setFilters, handleInvalidToken]);
-
-  //Авторизация 
-
-  useEffect(() => {
-    const tryAuth = async () => {
-      const tg = window.Telegram?.WebApp;
-      const initData = tg?.initData;
-
-      if (initData) {
-        try {
-          const res = await fetch('https://ritmevents.ru/api/v1/auth/telegram', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ init_data: initData })
-          });
-          if (res.ok) {
-            const data = await res.json();
-            localStorage.setItem('access_token', data.access_token);
-            localStorage.setItem('refresh_token', data.refresh_token);
-            setToken(data.access_token);
-            await fetchUserData(data.access_token);
-            setIsCheckingAuth(false);
-            return;
-          }
-        } catch (e) {
-          console.error('Ошибка tg auth:', e);
-        }
-      }
-
-      const saved = localStorage.getItem('access_token');
-      if (saved) {
-        setToken(saved);
-        await fetchUserData(saved);
-        setIsCheckingAuth(false);
-        return;
-      }
-
-      setShowInputCode(true);
-      setIsCheckingAuth(false);
-    };
-
-    tryAuth();
-  }, [fetchUserData]);
-
-  useEffect(() => {
-    window.Telegram?.WebApp?.ready();
-    window.Telegram?.WebApp?.expand();
-  }, []);
 
   const handleLogin = async () => {
     if (!code.trim()) return;
@@ -478,7 +411,7 @@ useEffect(() => {
         localStorage.setItem('refresh_token', data.refresh_token);
         setToken(data.access_token);
         setShowInputCode(false);
-        await fetchUserData(data.access_token);
+        window.location.reload();
       } else {
         setLoginError('Неверный или истёкший код. Попробуйте ещё раз.');
       }
@@ -487,8 +420,12 @@ useEffect(() => {
     }
   };
 
-  
+  const handleOpenLink = (e, url) => {
+    e.preventDefault();
+    openLink(url, platform);
+  };
 
+  // Отображение загрузки
   if (isCheckingAuth) {
     return (
       <div className="events">
@@ -500,6 +437,7 @@ useEffect(() => {
     );
   }
 
+  // Отображение ввода кода
   if (showInputCode) {
     return (
       <div className="events">
@@ -555,31 +493,30 @@ useEffect(() => {
 
       {(hasFilters || isSearchMode) && !isLoadingEvents && (
         <>
-        <div className="events__found">
-          {isSearchMode
-            ? `Результаты поиска «${searchQuery}»:`
-            : `Нашёл (${totalEvents}) мероприятий на ближайшей неделе`}
-        </div>
-        <div className="week-navigation">
-  <button 
-    className="week-nav-btn prev"
-    onClick={prevWeek}
-    disabled={currentWeekOffset === 0}
-  >
-    Предыдущая неделя
-  </button>
-  <span className="week-range">
-    {weekRange.start} - {weekRange.end}
-  </span>
-  <button 
-    className="week-nav-btn next"
-    onClick={nextWeek}
-  >
-    Следующая неделя
-  </button>
-</div>
+          <div className="events__found">
+            {isSearchMode
+              ? `Результаты поиска «${searchQuery}»:`
+              : `Нашёл (${totalEvents}) мероприятий на ближайшей неделе`}
+          </div>
+          <div className="week-navigation">
+            <button 
+              className="week-nav-btn prev"
+              onClick={prevWeek}
+              disabled={currentWeekOffset === 0}
+            >
+              Предыдущая неделя
+            </button>
+            <span className="week-range">
+              {weekRange.start} - {weekRange.end}
+            </span>
+            <button 
+              className="week-nav-btn next"
+              onClick={nextWeek}
+            >
+              Следующая неделя
+            </button>
+          </div>
         </>
-        
       )}
 
       <div className="digest-list">
@@ -623,7 +560,7 @@ useEffect(() => {
                 {event.participation_type && (
                   <div className="digest__partType">
                     <img src={partType} alt="person speaking icon"/> 
-                    {event.participation_type}
+                    {event.participation_type?.join(', ')}
                   </div>
                 )}
                 <div className="digest__location">
@@ -634,18 +571,15 @@ useEffect(() => {
                 {event.event_url && (
                   <div className="digest__eventUrl">
                     <img src={webIcon} alt="site icon" className="icon"/>
-                      <a 
-                        href={event.event_url}
-                        onClick={(e) => handleOpenLink(e, event.event_url)}
-                        className="digest-link"
-                      >
-                        Сайт мероприятия
-                      </a>
+                    <a 
+                      href={event.event_url}
+                      onClick={(e) => handleOpenLink(e, event.event_url)}
+                      className="digest-link"
+                    >
+                      Сайт мероприятия
+                    </a>
                   </div>
-                  )}
-
-
-
+                )}
               </div>
               {event.tags?.length > 0 && (
                 <div className="digest__tags">
@@ -656,7 +590,13 @@ useEffect(() => {
               )}
               <Link
                 to={`/events/${event.id}`}
-                state={{ token, userId }}
+                state={{ 
+                  token, 
+                  userId,
+                  weekOffset: currentWeekOffset,
+                  page: currentPage,
+                  searchQuery: searchQuery
+                }}
                 className="digest__link"
               >
                 <button className="btn digest__knowMore">ПОДРОБНЕЕ</button>
