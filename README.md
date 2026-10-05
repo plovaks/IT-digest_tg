@@ -1,16 +1,56 @@
-# React + Vite
+# Агрегатор событий в IT - mini app в Telegram и МАКС
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Реализовала frontend-часть mini app.
 
-Currently, two official plugins are available:
+Мини приложение с возможностью:
+- просмотра списка событий по фильтрам;
+- фильтрацией по категориям события, городу, типу мероприятия,типу участия;
+- просмотру конкретного события (содержит информацию о дате, времени, цене, типах участия, городе, ссылках на сайт и регистрацию, спикерах, организаторах);
+- поиска события;
+- редактирования профиля (фильтры, календари, помощники);
+- добавления понравившегося события в календарь (Google или Yandex)
+- создания своего события;
+- отправления обратной связи.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Ссылка на видео с информацией о приложении(моя часть работы описана на 29 секунде ролика) (https://disk.yandex.ru/i/4q4t6_KjbgH4-w) 
 
-## React Compiler
+## Стек
+- React, React Router
+- Vite
+- JavaScript
+- HTML, CSS
+- Telegram/MAX WebApp SDK
+- ESLint
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Запуск приложения
+Приложение запускается через бота в мессенджерах Тг и МАКС по @ritmevents_bot. Для запуска приложения необходимо нажать на кнопку "рИТм" внизу экрана. 
 
-## Expanding the ESLint configuration
+## Структура проекта
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+src/
+├── App/                  # корневой компонент, роутинг, кнопка «Назад», разбор start_param
+├── components/
+│   ├── eventsDigest/     # дайджест: список, поиск, недели, пагинация
+│   ├── Filters/          # выезжающая панель фильтров
+│   ├── InviteAccept/     # принятие приглашения помощника
+│   ├── ThemeWrapper.jsx  # фиксирует светлую тему
+│   └── useAuth.jsx       # авторизация по платформам
+├── pages/
+│   ├── eventPage/        # страница события
+│   ├── Profile/          # профиль
+│   ├── Submissions/      # заявки на мероприятия
+│   └── Feedback/         # обратная связь
+├── data/
+│   ├── filters.js        # справочники фильтров
+│   ├── platformService.js# определение платформы, openLink, инвайт-ссылки
+│   ├── calendarUrl.js    # ссылки для добавления в календарь
+│   └── dates.js          # генерация дат
+└── main.jsx
+
+## Устройство авторизации
+Авторизация вынесена в отдельный компонент useAuth, который определяет платформу и отправляет initData на соответствующий url /auth/max, /auth/telegram. Полученные access_token и refresh_token кладутся в localStorage, а при следующем запуске приложение сначала ищет сохранённый токен.
+
+
+
+
+
